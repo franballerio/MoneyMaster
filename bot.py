@@ -1,69 +1,44 @@
 import logging
-from telegram import Update, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, Updater, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler, ConversationHandler
-from telegram.constants import ParseMode
+import gspread
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+# this helps to know what the bot is doing, and if there are any errors
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
-token = "7735203801:AAGwegnbEhqjLWGI-3QgmLz3iM53TvPShaU"
-
-async def start(update: Update, context: CallbackContext) -> None:
-    """Handle the /start command and show inline buttons."""
-    keyboard = [
-        [InlineKeyboardButton("Add Spending", callback_data='add')],
-        [InlineKeyboardButton("View Spendings", callback_data='view')]
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    if update.message:
-        await update.message.reply_text(
-            "Hello, I'm the spendings bot. I can help you keep track of your spendings. "
-            "Choose an option below:",
-            reply_markup=reply_markup
-        )
-
-# async def help():
+# this function is called when the user sends the /start command
 
 
-async def buttons(update: Update, context: CallbackContext) -> None:
-    """Send a message with buttons."""
-    keyboard = [
-        [InlineKeyboardButton("Option 1", callback_data='1')],
-        [InlineKeyboardButton("Option 2", callback_data='2')],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    if update.message:
-        await update.message.reply_text("Choose an option:", reply_markup=reply_markup)
-
-async def buttons_callback(update: Update, context: CallbackContext) -> None:
-    """Handle button clicks."""
-    query = update.callback_query
-    if query:  # Ensure there's a valid callback query
-        await query.answer()  # Acknowledge the callback query (prevents loading spinner)
-
-        # Get the callback data and perform an action
-        callback_data = query.data
-
-        if callback_data == 'add':
-            await query.edit_message_text(text="You selected to add a spending!")
-        elif callback_data == 'view':
-            await query.edit_message_text(text="You selected to view your spendings.")
-        else:
-            await query.edit_message_text(text="Unknown option selected.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # object update contains information about the message
+    # object context contains information about the library
+    await context.bot.send_message(chat_id=update.effective_chat.id,
+                                   text="Hi Im Spendings Master, how can i help you?")
 
 
-def main():
-    "This function starts the bot."
-    # creates the bot application
-    app = Application.builder().token(token).build()
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(chat_id=update.effective_chat.id,
+                                   text="Sorry, I didn't understand that command.")
 
-    # Register command handlers
-    app.add_handler(CommandHandler("start", start))
-    # app.add_handler(CommandHandler("", ))
-    #
-    # Register callback handler for buttons
-    app.add_handler(CallbackQueryHandler(buttons_callback))
 
-    app.run_polling() # this runs the bot
+if __name__ == '__main__':
+    # create the bot application (object)
+    application = ApplicationBuilder().token(
+        'not_my_token').build()
 
-if __name__ == "__main__":
-    main()
+    # this 2 lines tell the bot what to do when /start is sent
+    start_handler = CommandHandler('start', start)
+    application.add_handler(start_handler)
+
+    # this should be at the end of the file, it tells the bot what to do when an unknown command is sent
+    # so this is triggered when the user sends a command that the bot doesn't know
+    unknown_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, unknown)
+    application.add_handler(unknown_handler)
+
+    unknown_handler = MessageHandler(filters.COMMAND, unknown)
+    application.add_handler(unknown_handler)
+
+    # runs the bot till ctrl+c is pressed
+    application.run_polling()
